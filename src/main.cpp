@@ -20,6 +20,7 @@ std::string get_file_contents(const char *filename)
 	}
 	else
 	{
+		std::cerr << "Failed to read " << filename << std::endl;
 		return "";
 	}
 }
@@ -30,10 +31,16 @@ void onWindowResize(GLFWwindow* window, int width, int height)
 	glViewport(0, 0, width, height);
 }
 
-void processInput(GLFWwindow *window)
+void onKey(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-		glfwSetWindowShouldClose(window, true);
+    static bool wireframe = false;
+    if (action == GLFW_PRESS)
+    {
+        if (key == GLFW_KEY_ESCAPE)
+            glfwSetWindowShouldClose(window, true);
+        else if (key == GLFW_KEY_W) // Wireframe toggle
+            glPolygonMode(GL_FRONT_AND_BACK, (wireframe = !wireframe) ? GL_LINE : GL_FILL);
+    }
 }
 
 GLuint makeShaderProgram(const char* vertexShaderPath, const char* fragmentShaderPath)
@@ -84,7 +91,8 @@ GLuint makeShaderProgram(const char* vertexShaderPath, const char* fragmentShade
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 
 	// Check for linking errors
-	if (!success) {
+	if (!success)
+	{
 		glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &length);
 		infoLog.resize(length);
 		glGetProgramInfoLog(shaderProgram, length, NULL, &infoLog[0]);
@@ -98,9 +106,9 @@ GLuint makeShaderProgram(const char* vertexShaderPath, const char* fragmentShade
 	return shaderProgram;
 }
 
-void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO) {
+void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO) {
 	// Load Shader Program
-	shaderProgram = makeShaderProgram("./shaders/triangle.vert", "./shaders/triangle.frag");
+	shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
 
 	// Make and bind a Vertex Array Object to store vertex attribute state changes
 	glGenVertexArrays(1, &VAO);
@@ -115,7 +123,6 @@ void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO) {
 	// The ordering matters anti clockwise means the rendered face is towards you, clockwise means it's away.
 
 	// These verticies need to be sent to the graphics card, the way this is done is through a Vertex Buffer Object (VBO)
-	GLuint VBO;
 	// Create a single buffer and save the id
 	glGenBuffers(1, &VBO);
 	// Bind the VBO for future operations, VBOs are type GL_ARRAY_BUFFER
@@ -170,6 +177,54 @@ void renderHelloTriangle(GLuint &shaderProgram, GLuint &VAO)
 	glBindVertexArray(0);
 }
 
+void setupHelloRectangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO, GLuint &EBO) {
+	shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
+
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
+
+	float vertices[] = {
+		 0.5f,  0.5f, 0.0f,	// Top Right
+		 0.5f, -0.5f, 0.0f, // Bottom Right
+		-0.5f, -0.5f, 0.0f, // Bottom Left
+		-0.5f,  0.5f, 0.0f  // Top Left
+	};
+
+	GLuint indices[] = {
+		0, 1, 3,// Top Right Triangle
+		1, 2, 3 // Bottom Left Triangle
+	};
+    //I noticed this uses clockwise, maybe should make it anti-clockwise?
+
+	glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // This time also make an element array buffer to say which vertices to use
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glEnableVertexAttribArray(0);
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void renderHelloRectangle(GLuint &shaderProgram, GLuint &VAO)
+{
+	glUseProgram(shaderProgram);
+	glBindVertexArray(VAO);
+
+    // Use the element array to specify which verticies from the vertex array to draw
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	glBindVertexArray(0);
+}
+
 int main()
 {
 	glfwInit();
@@ -204,24 +259,26 @@ int main()
 
 	// Register handler for when window is resized to update the viewport
 	glfwSetFramebufferSizeCallback(window, onWindowResize);
+    glfwSetKeyCallback(window, onKey);
 
 	//Init
-	GLuint triangleShaderProgram;
-	GLuint triangleVAO;
-	setupHelloTriangle(triangleShaderProgram, triangleVAO);
+	GLuint shaderProgram = 0;
+	GLuint VAO = 0;
+    GLuint VBO = 0;
+    GLuint EBO = 0;
+	//setupHelloTriangle(shaderProgram, VAO, VBO);
+    setupHelloRectangle(shaderProgram, VAO, VBO, EBO);
 
 	// Main render loop
 	while (!glfwWindowShouldClose(window))
 	{
-		// Process inputs
-		processInput(window);
-
 		// Clear the frame buffer by filling it with a colour
 		glClearColor(0.5f, 0.0f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// Render Stuff goes here
-		renderHelloTriangle(triangleShaderProgram, triangleVAO);
+		//renderHelloTriangle(shaderProgram, VAO);
+        renderHelloRectangle(shaderProgram, VAO);
 
 		// Display what was rendered in the current loop
 		glfwSwapBuffers(window);
@@ -231,6 +288,10 @@ int main()
 	}
 
 	// Clean up
+    if (VAO) glDeleteVertexArrays(1, &VAO);
+    if (VBO) glDeleteBuffers(1, &VBO);
+    if (EBO) glDeleteBuffers(1, &EBO);
+    if (shaderProgram) glDeleteProgram(shaderProgram);
 	//glfwDestroyWindow(window); // glfwTerminate() should destroy all window so this isn't really needed
 	glfwTerminate();
 	return 0;
