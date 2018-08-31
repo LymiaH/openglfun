@@ -108,7 +108,9 @@ GLuint makeShaderProgram(const char* vertexShaderPath, const char* fragmentShade
 
 void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO) {
 	// Load Shader Program
-	shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
+	//shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
+    //shaderProgram = makeShaderProgram("./shaders/colour_on_vertex.vert", "./shaders/colour_on_vertex.frag");
+    shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/colour_on_global.frag");
 
 	// Make and bind a Vertex Array Object to store vertex attribute state changes
 	glGenVertexArrays(1, &VAO);
@@ -165,8 +167,17 @@ void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO) {
 
 void renderHelloTriangle(GLuint &shaderProgram, GLuint &VAO)
 {
+    float timeValue = glfwGetTime();
+    float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+    // Not sure if this is bad practice, but I made it static to save from having to get it multiple times
+    static int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+    
 	// Use the Shader Program
 	glUseProgram(shaderProgram);
+
+    // Set the global colour
+    glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+
 	// Restore vertex attribute state using VBO
 	glBindVertexArray(VAO);
 
@@ -253,6 +264,12 @@ int main()
 		return -1;
 	}
 
+    // OpenGL Information
+    int maxVertexAttribs;
+    glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttribs);
+    std::cout << "Maximum number of vertex attributes supported: " << maxVertexAttribs << std::endl;
+    // My computer had 16! (minimum)
+
 	// This configures the viewport transform, which maps OpenGL's -1 to 1 world space to window coordinates
 	// The transformation occurs just before OpenGL makes the fragments for the fragment shader
 	glViewport(0, 0, 800, 600);
@@ -266,8 +283,8 @@ int main()
 	GLuint VAO = 0;
     GLuint VBO = 0;
     GLuint EBO = 0;
-	//setupHelloTriangle(shaderProgram, VAO, VBO);
-    setupHelloRectangle(shaderProgram, VAO, VBO, EBO);
+	setupHelloTriangle(shaderProgram, VAO, VBO);
+    //setupHelloRectangle(shaderProgram, VAO, VBO, EBO);
 
 	// Main render loop
 	while (!glfwWindowShouldClose(window))
@@ -277,8 +294,8 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// Render Stuff goes here
-		//renderHelloTriangle(shaderProgram, VAO);
-        renderHelloRectangle(shaderProgram, VAO);
+		renderHelloTriangle(shaderProgram, VAO);
+        //renderHelloRectangle(shaderProgram, VAO);
 
 		// Display what was rendered in the current loop
 		glfwSwapBuffers(window);
@@ -292,7 +309,7 @@ int main()
     if (VBO) glDeleteBuffers(1, &VBO);
     if (EBO) glDeleteBuffers(1, &EBO);
     if (shaderProgram) glDeleteProgram(shaderProgram);
-	//glfwDestroyWindow(window); // glfwTerminate() should destroy all window so this isn't really needed
+	//glfwDestroyWindow(window); // glfwTerminate() should destroy all windows so this isn't really needed
 	glfwTerminate();
 	return 0;
 }
