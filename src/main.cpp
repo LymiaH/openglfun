@@ -108,19 +108,19 @@ GLuint makeShaderProgram(const char* vertexShaderPath, const char* fragmentShade
 
 void setupHelloTriangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO) {
 	// Load Shader Program
-	//shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
-    //shaderProgram = makeShaderProgram("./shaders/colour_on_vertex.vert", "./shaders/colour_on_vertex.frag");
-    shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/colour_on_global.frag");
+	//shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/colour_from_constant.frag");
+    //shaderProgram = makeShaderProgram("./shaders/colour_from_constant.vert", "./shaders/colour_from_vertex.frag");
+    shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/colour_from_global.frag");
 
 	// Make and bind a Vertex Array Object to store vertex attribute state changes
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
 
-	// Each row is the coordinate for a corner of the triangle
+	// Each row is the coordinate for a corner of the triangle followed by its colour
 	float vertices[] = {
 		-0.5f, -0.5f, 0.0f, // Bottom Left
 		 0.5f, -0.5f, 0.0f, // Bottom Right
-		 0.0f,  0.5f, 0.0f  // Top Centre
+		 0.0f,  0.5f, 0.0f, // Top Centre
 	};
 	// The ordering matters anti clockwise means the rendered face is towards you, clockwise means it's away.
 
@@ -189,7 +189,7 @@ void renderHelloTriangle(GLuint &shaderProgram, GLuint &VAO)
 }
 
 void setupHelloRectangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO, GLuint &EBO) {
-	shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/default.frag");
+	shaderProgram = makeShaderProgram("./shaders/default.vert", "./shaders/colour_from_constant.frag");
 
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
@@ -234,6 +234,50 @@ void renderHelloRectangle(GLuint &shaderProgram, GLuint &VAO)
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(0);
+}
+
+void setupRGBTriangle(GLuint &shaderProgram, GLuint &VAO, GLuint &VBO)
+{
+    shaderProgram = makeShaderProgram("./shaders/colour_per_vertex.vert", "./shaders/colour_from_vertex.frag");
+
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    // Each row is the coordinate for a corner of the triangle followed by its colour
+    float vertices[] = {
+        // Positions            //  Colours
+        -0.5f, -0.5f, 0.0f,     1.0f, 0.0f, 0.0f,   // Bottom Left
+         0.5f, -0.5f, 0.0f,     0.0f, 1.0f, 0.0f,   // Bottom Right
+         0.0f,  0.5f, 0.0f,     0.0f, 0.0f, 1.0f,   // Top Centre
+    };
+   
+    // This is still the same
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Can't use 0 for the width anymore, since no longer tightly packed
+    // 6 * sizeof(float) is the stride, which is the distance between the data for each vertex
+    // The last parameter is the offset from the start of the buffer for the data
+    // Positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // Colours
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void renderRGBTriangle(GLuint &shaderProgram, GLuint &VAO)
+{
+    glUseProgram(shaderProgram);
+    glBindVertexArray(VAO);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glBindVertexArray(0);
 }
 
 int main()
@@ -283,19 +327,22 @@ int main()
 	GLuint VAO = 0;
     GLuint VBO = 0;
     GLuint EBO = 0;
-	setupHelloTriangle(shaderProgram, VAO, VBO);
+	//setupHelloTriangle(shaderProgram, VAO, VBO);
     //setupHelloRectangle(shaderProgram, VAO, VBO, EBO);
+    setupRGBTriangle(shaderProgram, VAO, VBO);
 
 	// Main render loop
 	while (!glfwWindowShouldClose(window))
 	{
 		// Clear the frame buffer by filling it with a colour
-		glClearColor(0.5f, 0.0f, 0.5f, 1.0f);
+		//glClearColor(0.5f, 0.0f, 0.5f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		// Render Stuff goes here
-		renderHelloTriangle(shaderProgram, VAO);
+		//renderHelloTriangle(shaderProgram, VAO);
         //renderHelloRectangle(shaderProgram, VAO);
+        renderRGBTriangle(shaderProgram, VAO);
 
 		// Display what was rendered in the current loop
 		glfwSwapBuffers(window);
